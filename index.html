@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Document</title>
+</head>
+<body>
+    <div id="box">
+        <input type="text" v-model="name" />
+        <input type="text" v-model="name" />
+        <input type="text" v-model="val" />
+        {{val}}
+        {{name}}
+    </div>
+   
+<script>
+    let reg = /\{\{([^}]*)\}\}/g;
+    let obj = {
+        name:new ViewModel('nzp'),
+        val:new ViewModel('hehe')
+    }
+
+    function ViewModel(data){
+        this.data = data;
+        this.nodes = [];//放节点的盒子
+    }
+
+    //把同名的节点放在nodes中
+    ViewModel.prototype.bindNode = function(node){
+        this.nodes.push(node);
+    }
+
+    //让节点中的值等于设置的值。
+    ViewModel.prototype.updata = function(){
+        this.nodes.forEach(node=>{
+            if(node.nodeType == 1){
+                node.value = this.data; 
+            }else{
+                node.textContent = node.my.replace(reg,function(){
+                   return obj[arguments[1]].data;
+                })
+            }
+        })
+    }
+
+    //设置新值
+    ViewModel.prototype.setVal = function(newValue){
+        if(newValue != this.data){
+            this.data = newValue;
+            this.updata();
+        }
+    }
+    //获取值
+    ViewModel.prototype.getVal = function(){
+        return this.data;
+    }
+
+
+
+    function complie(ele){
+        ele = document.querySelector(ele);
+        let fragment = document.createDocumentFragment();
+        let child;
+        while(child = ele.firstChild){
+            fragment.appendChild(child);
+        }
+        
+        //递归查找匹配的属性
+
+        function compileElement(fragment){
+
+            Array.from(fragment.childNodes).forEach(e=>{
+                
+                let txt = e.textContent;
+                console.log(txt);
+
+                /*
+                    如果是元素节点，循环属性，查看name中是否有v-
+                    就把节点push到bind中
+                    再给每个节点绑上input事件，调用实例化对象的setVal
+                */
+                if(e.nodeType == 1){
+                    Array.from(e.attributes).forEach(attr=>{
+                        let {name,value} = attr;
+                        if(name.includes('v-')){
+                            obj[value].bindNode(e);
+                            e.oninput = function(e){
+                                obj[value].setVal(e.target.value);
+                            }
+                        }
+                    })
+                    // console.log(e.attributes);
+                }
+                //给文本节点
+                if(e.nodeType == 3 && reg.test(txt)){
+                    // console.log(e.textContent);
+                    txt.replace(reg,function(){
+                        obj[arguments[1]].bindNode(e);
+                        console.log(e)
+                        e.my = txt;
+                        // console.log(arguments[1])
+                    });
+                }
+                if (e.childNodes && e.childNodes.length) {
+                    compileElement(e);
+                }
+
+            });
+        }
+
+        compileElement(fragment)
+
+    
+        
+        Object.keys(obj).forEach(e=>{
+            // console.log(obj[e])
+            obj[e].updata();
+        });
+
+        ele.appendChild(fragment);
+        // console.dir(fragment);
+    }
+
+    complie('#box');
+
+
+
+</script>
+</body>
+</html>
